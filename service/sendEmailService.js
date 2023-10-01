@@ -43,7 +43,7 @@ export default class SendEmailService {
                 endDate.push(alertObj);
             });
 
-            const sendReminder = await this.sendEmailReminder(endDate);
+            const sendReminder = await this.sendEmailReminder(endDate, user);
 
             return {data: sendReminder, user: user}
         } catch (error) {
@@ -51,11 +51,15 @@ export default class SendEmailService {
         }
     }
 
-    sendEmailReminder = async (data) => {
+    sendEmailReminder = async (data, user) => {
         try {
-            return {end_date, start_date}
+            const endDate = [];
+            data.forEach(element => {
+                return endDate.push(element.endDate);
+            });
+
         } catch (error) {
-            
+            return {status: false, message: error.message}
         }
     }
 
