@@ -1,10 +1,25 @@
 import sg from '@sendgrid/mail';
+import corn from "node-cron";
 import schedule from "node-schedule";
+import connectDB from '../config/config.js';
 import AlertModel from '../models/alertModel.js';
 
+sg.setApiKey(process.env.SG_API_KEY);
 export default class SendEmailService {
     constructor() {
-        this.sg = sg.setApiKey(process.env.SG_API_KEY);
+       connectDB()
+            .then(() => {
+                corn.schedule("0 0 * * *", async () => {
+                    try {
+                        await this.sendEmailReminders();
+                    } catch (error) {
+                        return {status: false, message: error.message}
+                    }
+                })
+            })
+            .catch((error) => {
+                return {status: false, message: error.message}
+            })
     }
 
     sendEmail = async (to, subject, text) => {
@@ -89,6 +104,41 @@ export default class SendEmailService {
 
             }
 
+            return { status: false, message: "No reminders scheduled" };
+
+        } catch (error) {
+            return {status: false, message: error.message}
+        }
+    }
+
+    sendEmailReminders = async () => {
+        try {
+            const currentDate = new Date();
+
+            const alertToRemind = await AlertModel.find({
+                a_end_date: {
+                    $gte: currentDate,
+                    $lt: new Date(currentDate.getTime() + 24 * 60 * 60 * 1000),
+                },
+                a_u_id: user._id,
+            })
+
+            for (const alert of alertToRemind) {
+                const sendReminder = await this.sendEmailReminder(
+                    [
+                        {
+                            startDate: alert.a_start_date,
+                            endDate: alert.a_end_date,
+                            vehicleNumber: alert.a_v_number,
+                            alertType: alert.a_type,
+                            userId: alert.a_u_id,
+                        }
+                    ],
+                    user
+                );
+
+                return {status: true, message: `Email sent successfully with ${alert._id}`, sendReminder};
+            }
         } catch (error) {
             return {status: false, message: error.message}
         }
