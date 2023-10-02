@@ -1,4 +1,5 @@
 import sg from '@sendgrid/mail';
+import schedule from "node-schedule";
 import AlertModel from '../models/alertModel.js';
 
 export default class SendEmailService {
@@ -53,10 +54,40 @@ export default class SendEmailService {
 
     sendEmailReminder = async (data, user) => {
         try {
-            const endDate = [];
+            const endDates = [];
             data.forEach(element => {
-                return endDate.push(element.endDate);
+                return endDates.push(element.endDate);
             });
+
+            for (const endDate of endDates) {
+                const reminderDate = new Date(endDate);
+                reminderDate.setDate(reminderDate.getDate() - 1);
+
+                if(reminderDate > new Date()) {
+                    const msg = {
+                        to: 'bishaldeb282@gmail.com',
+                        from: 'bishaldeb282@gmail.com',
+                        subject: "Alert",
+                        html: `<h1>Alert</h1>`,
+                    };
+
+                    await new Promise((resolve, reject) => {
+                        const job = schedule.scheduleJob(reminderDate, () => {
+                            sgMail
+                                .send(msg)
+                                .then(() => {
+                                    resolve({ status: true, message: "Email sent successfully" });
+                                })
+                                .catch((err) => {
+                                    reject({ status: false, message: err.message });
+                                });
+                        });
+                    });
+
+                    return {status: true, message: "Email sent successfully"}
+                }
+
+            }
 
         } catch (error) {
             return {status: false, message: error.message}
